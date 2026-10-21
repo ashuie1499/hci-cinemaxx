@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Seat Booking</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="database.js"></script>
+  <script src="script.js"></script>
+</head>
+<body>
+<header class="nav">
+  <a href="index.html" class="logo-link"><img src="media/logo.svg" alt="CINEMAXX Logo" class="logo-img"></a>
+  <nav>
+    <a href="index.html">Movies</a>
+    <a href="myhistory.html">My History</a>
+  </nav>
+  <div>
+    <input type="text" id="searchbox" placeholder="Search movies" onkeydown="if(event.key==='Enter')doSearch()"> <button onclick="doSearch()">Q</button>
+    <a class="btn" id="authbtn" href="login.html">Login</a>
+  </div>
+</header>
+<main>
+<div class="booking" id="seatbox"></div>
+<button class="confirmbtn" id="confirmbtn" onclick="confirmSeats()">CONFIRM SEATS</button>
+
+<script>
+// FIXED: Removed userOnly(); page guard from here to allow logged-out guest layout interactions!
+
+var b = load('booking', null);
+var st = b ? findShowtime(b.showtimeId) : null;
+var mv = st ? findMovie(st.movieId) : null;
+var taken = st ? takenSeats(st.id) : [];
+var selected = [];
+var seatbox = document.getElementById('seatbox');
+
+if (!st || !mv) {
+  seatbox.innerHTML = '<p class="empty">No showtime selected.</p><p style="text-align:center"><a class="btn" href="index.html">BACK TO MOVIES</a></p>';
+  document.getElementById('confirmbtn').style.display = 'none';
+} else {
+  renderSeats();
+}
+
+function seatHtml(code, label) {
+  var cls = taken.indexOf(code) >= 0 ? 'sold' : (selected.indexOf(code) >= 0 ? 'sel' : '');
+  return '<div class="seat ' + cls + '"' + (cls === 'sold' ? '' : ' onclick="toggleSeat(\'' + code + '\')"') + '>' + label + '</div>';
+}
+
+function renderSeats() {
+  var half = SEATS_PER_ROW / 2;
+  var rows = '';
+  SEAT_ROWS.forEach(function (r) {
+    var left = '', right = '';
+    for (var n = 1; n <= half; n++) left += seatHtml(r + n, n);
+    for (var k = half + 1; k <= SEATS_PER_ROW; k++) right += seatHtml(r + k, k);
+    rows += '<div class="seatrow">' +
+              '<span class="rowlabel">' + r + '</span>' +
+              '<div class="seatgroup">' + left + '</div>' +
+              '<div class="aisle"></div>' +
+              '<div class="seatgroup">' + right + '</div>' +
+              '<span class="rowlabel">' + r + '</span>' +
+            '</div>';
+  });
+
+  var extra = '<div class="sidedetails"><hr>' +
+    '<p><span>Date</span>' + fmtDate(st.date) + '</p>' +
+    '<p><span>Time</span>' + fmtTime(st.time) + '</p>' +
+    '<p><span>Hall</span>Hall ' + st.hall + '</p>' +
+    '<p><span>Experience</span>' + esc(st.exp) + '</p>' +
+    '<p><span>Price per seat</span>' + fmtMoney(st.price) + '</p></div>';
+
+  seatbox.innerHTML =
+    '<div class="bookgrid"><div class="sideinfo">' + movieSide(mv, extra) + '</div><div class="sidemain">' +
+      '<div class="seattop">' +
+        '<div class="seatlegend">' +
+          '<span><div class="seat"></div> available</span>' +
+          '<span><div class="seat sel"></div> selected</span>' +
+          '<span><div class="seat sold"></div> sold</span>' +
+        '</div>' +
+        '<p class="seatsummary">Seats: <b>' + (selected.length ? selected.join(', ') : '-') + '</b> &nbsp;|&nbsp; Total: <b>' + fmtMoney(selected.length * st.price) + '</b></p>' +
+      '</div>' +
+      '<div class="seatarea">' +
+        '<div class="screen">SCREEN</div>' +
+        '<div class="seatmap">' + rows + '</div>' +
+      '</div>' +
+    '</div></div>';
+}
+
+function toggleSeat(code) {
+  var i = selected.indexOf(code);
+  if (i >= 0) selected.splice(i, 1); else selected.push(code);
+  selected = allSeats().filter(function (c) { return selected.indexOf(c) >= 0; });
+  renderSeats();
+}
+
+// FIXED: Custom modal dialog pops up if they try to confirm seats while logged out. 
+// Clicking OK simply closes the modal and DOES NOT redirect them anywhere.
+function confirmSeats() {
+  if (!selected.length) { 
+    showAlert('Select Seats', 'Please select at least one seat.'); 
+    return; 
+  }
+  
+  if (!localStorage.getItem('user')) {
+    showAlert(
+      'Login Required',
+      'Please log in first to book tickets.'
+    );
+    return;
+  }
+  
+  b.seats = selected;
+  save('booking', b);
+  window.location.href = 'payment.html';
+}
+</script>
+</main>
+</body>
+</html>

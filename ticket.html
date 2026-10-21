@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ticket Management</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="database.js"></script>
+  <script src="script.js"></script>
+  <style>
+    /* Styling for the Admin Editing Box */
+    .admin-edit-box {
+      border: 2px solid #ff9800;
+      background: rgba(255, 152, 0, 0.1);
+      margin-top: 20px;
+      padding: 15px;
+      border-radius: 8px;
+    }
+    .admin-edit-box h3 {
+      color: #ff9800;
+      margin-top: 0;
+    }
+    .edit-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+    .edit-grid div {
+      display: flex;
+      flex-direction: column;
+    }
+    .edit-grid label {
+      font-size: 12px;
+      font-weight: bold;
+      margin-bottom: 4px;
+      color: #ccc;
+    }
+    .edit-grid input, .edit-grid select {
+      padding: 8px;
+      background: #222;
+      border: 1px solid #444;
+      color: #fff;
+      border-radius: 4px;
+    }
+    .edit-actions {
+      display: flex;
+      gap: 10px;
+    }
+  </style>
+</head>
+<body>
+<header class="nav">
+  <a href="index.html" class="logo-link"><img src="media/logo.svg" alt="CINEMAXX Logo" class="logo-img"></a>
+  <nav>
+    <a href="index.html">Movies</a>
+    <a href="myhistory.html">My History</a>
+  </nav>
+  <div>
+    <input type="text" id="searchbox" placeholder="Search movies" onkeydown="if(event.key==='Enter')doSearch()"> <button onclick="doSearch()">Q</button>
+    <a class="btn" id="authbtn" href="login.html">Login</a>
+  </div>
+</header>
+<main>
+<div class="ticket" id="ticketbox">
+  <h1 id="ticket-header">Purchase Successful</h1>
+
+  <div class="ticket-row">
+    <div class="ticket-poster" id="t-poster"></div>
+
+    <div class="ticket-info">
+      <div class="glass wide">
+        <h3>Movie Details</h3>
+        <p><span>Movie</span>: <em id="t-movie"></em></p>
+        <p><span>Date</span>: <em id="t-date"></em></p>
+        <p><span>Time</span>: <em id="t-time"></em></p>
+        <p><span>Experience</span>: <em id="t-exp"></em></p>
+      </div>
+
+      <div class="glass wide">
+        <h3>Hall &amp; Seat</h3>
+        <p><span>Hall</span>: <em id="t-hall"></em></p>
+        <p><span>Seat Number</span>: <em id="t-seats"></em></p>
+      </div>
+
+      <div class="glass wide">
+        <h3>Purchase Details</h3>
+        <p><span>Order No.</span>: <em id="t-id"></em></p>
+        <p><span>Customer</span>: <em id="t-user"></em></p>
+        <p><span>Purchase Date</span>: <em id="t-bought"></em></p>
+        <p><span>Payment Method</span>: <em id="t-method"></em></p>
+        <p><span>Tickets</span>: <em id="t-qty"></em></p>
+        <p><span>Total</span>: <em id="t-total"></em></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ADMIN EDIT TICKET PANEL -->
+  <div id="admin-panel" class="glass wide admin-edit-box" style="display: none;">
+    <h3>✏️ Admin Control: Edit Ticket Info</h3>
+    <div class="edit-grid">
+      <!-- NEW: Movie Selector added below -->
+      <div class="full" style="grid-column: span 2; margin-bottom: 10px;">
+        <label>Select Movie *</label>
+        <select id="edit-movie-select"></select>
+      </div>
+      <div>
+        <label>Customer Username *</label>
+        <input type="text" id="edit-user">
+      </div>
+      <div>
+        <label>Seats (comma separated, e.g. A1, A2) *</label>
+        <input type="text" id="edit-seats">
+      </div>
+      <div>
+        <label>Experience *</label>
+        <select id="edit-exp">
+          <option value="2D">2D</option>
+          <option value="3D">3D</option>
+          <option value="IMAX">IMAX</option>
+          <option value="Lux">LUX</option>
+        </select>
+      </div>
+      <div>
+        <label>Hall Number *</label>
+        <input type="number" id="edit-hall" min="1">
+      </div>
+      <div>
+        <label>Base Price per Ticket (RM) *</label>
+        <input type="number" id="edit-price" step="0.1" min="0">
+      </div>
+      <div>
+        <label>Payment Method *</label>
+        <input type="text" id="edit-method">
+      </div>
+    </div>
+    <div class="edit-actions">
+      <button class="btn" onclick="saveTicketEdits()" style="background-color: #4CAF50;">SAVE CHANGES</button>
+      <button class="btn" onclick="toggleEditPanel()" style="background: #555;">CANCEL</button>
+    </div>
+    <p id="edit-msg" style="margin-top:10px; font-weight:bold;"></p>
+  </div>
+
+  <div style="margin-top:20px; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+    <a class="btn" id="history-back-btn" href="myhistory.html">VIEW MY HISTORY</a>
+    <a class="btn" id="movie-back-btn" href="index.html">BACK TO MOVIES</a>
+    <button class="btn" id="edit-toggle-btn" onclick="toggleEditPanel()" style="display:none; background-color: #ff9800;">EDIT TICKET</button>
+    <button class="btn" onclick="window.print()">PRINT</button>
+  </div>
+</div>
+
+<script>
+userOnly();
+
+var ticketId = qs('id');
+var t = findTicket(ticketId);
+var isAdmin = localStorage.getItem('role') === 'admin';
+
+function loadTicketData() {
+  t = findTicket(ticketId); // Refresh ticket instance
+  if (!t || (t.user !== localStorage.getItem('user') && !isAdmin)) {
+    document.getElementById('ticketbox').innerHTML =
+      '<p class="empty">Ticket not found.</p><p style="text-align:center"><a class="btn" href="myhistory.html">VIEW MY HISTORY</a></p>';
+    return;
+  }
+
+  // Set page headers
+  if (isAdmin) {
+    document.getElementById('ticket-header').innerText = "Ticket Management (Admin)";
+  }
+
+  // Populate UI fields
+  document.getElementById('t-poster').innerHTML = posterTag(findMovie(t.movieId));
+  document.getElementById('t-movie').innerText = t.movieTitle;
+  document.getElementById('t-date').innerText = fmtDate(t.date);
+  document.getElementById('t-time').innerText = fmtTime(t.time);
+  document.getElementById('t-exp').innerText = t.exp;
+  document.getElementById('t-hall').innerText = 'Hall ' + t.hall;
+  document.getElementById('t-seats').innerText = t.seats.join(', ');
+  document.getElementById('t-id').innerText = t.id;
+  document.getElementById('t-user').innerText = t.user;
+  document.getElementById('t-bought').innerText = fmtDateTime(t.purchasedAt);
+  document.getElementById('t-method').innerText = t.method;
+  document.getElementById('t-qty').innerText = t.seats.length + ' x ' + fmtMoney(t.price);
+  document.getElementById('t-total').innerText = fmtMoney(t.total);
+
+  // Setup Admin view preferences
+  if (isAdmin) {
+    var backBtn = document.getElementById('history-back-btn');
+    backBtn.href = 'adminticket.html';
+    backBtn.innerText = 'BACK TO ALL TICKETS';
+    
+    document.getElementById('movie-back-btn').style.display = 'none';
+    document.getElementById('edit-toggle-btn').style.display = 'inline-block';
+    
+    // Populate the movie selector options for editing
+    populateMovieOptions();
+  }
+}
+
+function populateMovieOptions() {
+  var movies = getMovies();
+  var selectEl = document.getElementById('edit-movie-select');
+  
+  if (!selectEl) return;
+  
+  selectEl.innerHTML = '';
+  movies.forEach(function(m) {
+    var opt = document.createElement('option');
+    opt.value = m.id;
+    opt.innerText = m.title + (m.status === 'now' ? ' (Now Showing)' : ' (Coming Soon)');
+    selectEl.appendChild(opt);
+  });
+}
+
+function toggleEditPanel() {
+  var panel = document.getElementById('admin-panel');
+  if (panel.style.display === 'none') {
+    // Fill form fields with current data
+    document.getElementById('edit-movie-select').value = t.movieId;
+    document.getElementById('edit-user').value = t.user;
+    document.getElementById('edit-seats').value = t.seats.join(', ');
+    document.getElementById('edit-exp').value = t.exp;
+    document.getElementById('edit-hall').value = t.hall;
+    document.getElementById('edit-price').value = t.price;
+    document.getElementById('edit-method').value = t.method;
+    
+    panel.style.display = 'block';
+    panel.scrollIntoView({ behavior: 'smooth' });
+  } else {
+    panel.style.display = 'none';
+    document.getElementById('edit-msg').innerText = '';
+  }
+}
+
+function saveTicketEdits() {
+  var selectedMovieId = document.getElementById('edit-movie-select').value;
+  var user = document.getElementById('edit-user').value.trim();
+  var seatsText = document.getElementById('edit-seats').value.trim();
+  var exp = document.getElementById('edit-exp').value;
+  var hall = parseInt(document.getElementById('edit-hall').value, 10);
+  var price = parseFloat(document.getElementById('edit-price').value);
+  var method = document.getElementById('edit-method').value.trim();
+  var msg = document.getElementById('edit-msg');
+
+  // Validations
+  if (!selectedMovieId || !user || !seatsText || isNaN(hall) || isNaN(price) || !method) {
+    msg.style.color = 'red';
+    msg.innerText = 'Please complete all fields with valid information.';
+    return;
+  }
+
+  // Parse seats array
+  var seatsArr = seatsText.split(',').map(function (s) { return s.trim().toUpperCase(); }).filter(Boolean);
+  if (seatsArr.length === 0) {
+    msg.style.color = 'red';
+    msg.innerText = 'Please enter at least one seat.';
+    return;
+  }
+
+  // Get current tickets list
+  var tickets = getTickets();
+  var index = tickets.findIndex(function (tick) { return tick.id === t.id; });
+
+  if (index !== -1) {
+    // Look up target movie details to update the ticket's movie title
+    var targetMovie = findMovie(selectedMovieId);
+    if (!targetMovie) {
+      msg.style.color = 'red';
+      msg.innerText = 'Selected movie not found in database.';
+      return;
+    }
+
+    // Update ticket fields including Movie details
+    tickets[index].movieId = selectedMovieId;
+    tickets[index].movieTitle = targetMovie.title;
+    tickets[index].user = user;
+    tickets[index].seats = seatsArr;
+    tickets[index].exp = exp;
+    tickets[index].hall = hall;
+    tickets[index].price = price;
+    tickets[index].total = price * seatsArr.length;
+    tickets[index].method = method;
+
+    // Save back to local storage (calling the external helper in script.js)
+    if (saveTickets(tickets)) {
+      msg.style.color = '#4CAF50';
+      msg.innerText = 'Ticket updated successfully!';
+      setTimeout(function() {
+        toggleEditPanel();
+        loadTicketData();
+      }, 1000);
+    } else {
+      msg.style.color = 'red';
+      msg.innerText = 'Error: Failed to save changes.';
+    }
+  } else {
+    msg.style.color = 'red';
+    msg.innerText = 'Ticket object not found in Database.';
+  }
+}
+
+// Initial render
+loadTicketData();
+</script>
+</main>
+</body>
+</html>

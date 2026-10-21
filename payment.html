@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Payment</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="database.js"></script>
+  <script src="script.js"></script>
+</head>
+<body>
+<header class="nav">
+  <a href="index.html" class="logo-link"><img src="media/logo.svg" alt="CINEMAXX Logo" class="logo-img"></a>
+  <nav>
+    <a href="index.html">Movies</a>
+    <a href="myhistory.html">My History</a>
+  </nav>
+  <div>
+    <input type="text" id="searchbox" placeholder="Search movies" onkeydown="if(event.key==='Enter')doSearch()"> <button onclick="doSearch()">Q</button>
+    <a class="btn" id="authbtn" href="login.html">Login</a>
+  </div>
+</header>
+<main>
+<div class="payment" id="paymentbox">
+  <h1>Payment</h1>
+
+  <div class="pay-row">
+
+    <div class="glass pay-box">
+      <h3>Order Details</h3>
+      <p><span>Movie</span>: <em id="p-movie"></em></p>
+      <p><span>Date</span>: <em id="p-date"></em></p>
+      <p><span>Time</span>: <em id="p-time"></em></p>
+      <p><span>Hall</span>: <em id="p-hall"></em></p>
+      <p><span>Experience</span>: <em id="p-exp"></em></p>
+      <p><span>Seats</span>: <em id="p-seats"></em></p>
+      <hr>
+      <p><span>Tickets</span>: <em id="p-qty"></em></p>
+      <p><span>Price each</span>: <em id="p-price"></em></p>
+      <p class="total"><span>Total</span>: <em id="p-total"></em></p>
+    </div>
+
+    <div class="glass pay-box">
+      <h3>Payment Method</h3>
+
+      <label class="pay-option">
+        <input type="radio" name="method" value="Credit / Debit Card" onchange="methodChanged()"> Credit / Debit Card
+      </label>
+      <label class="pay-option">
+        <input type="radio" name="method" value="E-Wallet" onchange="methodChanged()"> E-Wallet
+      </label>
+      <label class="pay-option">
+        <input type="radio" name="method" value="Online Banking" onchange="methodChanged()"> Online Banking
+      </label>
+      <label class="pay-option">
+        <input type="radio" name="method" value="Cash" onchange="methodChanged()"> Cash (pay at the counter)
+      </label>
+
+      <div id="cardfields" style="display:none;">
+        <div class="field"><input type="text" id="cardno" placeholder="Card Number"></div>
+        <div class="field"><input type="text" id="expiry" placeholder="Expiry (MM/YY)"></div>
+        <div class="field"><input type="text" id="cvv" placeholder="CVV"></div>
+      </div>
+
+      <p id="cashnote" style="display:none;">Please pay in cash at the counter before the show. Show your order number.</p>
+      <p class="msg" id="paymsg"></p>
+    </div>
+
+  </div>
+
+  <div class="pay-actions">
+    <a class="btn" href="seatbooking.html">BACK</a>
+    <button class="paybtn" onclick="checkout()">CHECKOUT</button>
+  </div>
+</div>
+
+<script>
+userOnly();
+
+var b = load('booking', null);
+var st = b ? findShowtime(b.showtimeId) : null;
+var mv = st ? findMovie(st.movieId) : null;
+
+if (!st || !mv || !b.seats || !b.seats.length) {
+  document.getElementById('paymentbox').innerHTML =
+    '<p class="empty">Nothing to pay for yet.</p><p style="text-align:center"><a class="btn" href="index.html">BACK TO MOVIES</a></p>';
+} else {
+  document.getElementById('p-movie').innerText = mv.title;
+  document.getElementById('p-date').innerText = fmtDate(st.date);
+  document.getElementById('p-time').innerText = fmtTime(st.time);
+  document.getElementById('p-hall').innerText = 'Hall ' + st.hall;
+  document.getElementById('p-exp').innerText = st.exp;
+  document.getElementById('p-seats').innerText = b.seats.join(', ');
+  document.getElementById('p-qty').innerText = b.seats.length;
+  document.getElementById('p-price').innerText = fmtMoney(st.price);
+  document.getElementById('p-total').innerText = fmtMoney(b.seats.length * st.price);
+}
+
+function methodChanged() {
+  var m = document.querySelector('input[name="method"]:checked');
+  var v = m ? m.value : '';
+  document.getElementById('cardfields').style.display = (v === 'Credit / Debit Card') ? 'block' : 'none';
+  document.getElementById('cashnote').style.display = (v === 'Cash') ? 'block' : 'none';
+  document.getElementById('paymsg').innerText = '';
+}
+
+function checkout() {
+  var method = document.querySelector('input[name="method"]:checked');
+  var msg = document.getElementById('paymsg');
+
+  if (!method) { msg.innerText = 'Please choose a payment method'; return; }
+
+  if (method.value === 'Credit / Debit Card') {
+    if (document.getElementById('cardno').value.trim() === '' ||
+        document.getElementById('expiry').value.trim() === '' ||
+        document.getElementById('cvv').value.trim() === '') {
+      msg.innerText = 'Please fill in all card details';
+      return;
+    }
+  }
+
+  // make sure nobody took these seats while paying
+  var taken = takenSeats(st.id);
+  for (var i = 0; i < b.seats.length; i++) {
+    if (taken.indexOf(b.seats[i]) >= 0) {
+      alert('Sorry, seat ' + b.seats[i] + ' was just taken. Please choose again.');
+      window.location.href = 'seatbooking.html';
+      return;
+    }
+  }
+
+  var ticket = {
+    id: genId('CX'),
+    user: localStorage.getItem('user'),
+    movieId: mv.id,
+    movieTitle: mv.title,
+    showtimeId: st.id,
+    date: st.date,
+    time: st.time,
+    hall: st.hall,
+    exp: st.exp,
+    seats: b.seats,
+    price: st.price,
+    total: b.seats.length * st.price,
+    method: method.value,
+    purchasedAt: new Date().toISOString()
+  };
+
+  var tickets = getTickets();
+  tickets.push(ticket);
+  if (!saveTickets(tickets)) return;
+
+  localStorage.removeItem('booking');
+  window.location.href = 'ticket.html?id=' + ticket.id;
+}
+</script>
+</main>
+</body>
+</html>

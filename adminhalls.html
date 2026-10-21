@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Admin Halls</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="database.js"></script>
+  <script src="script.js"></script>
+</head>
+<body>
+<header class="nav">
+  <b>CINEMAXX ADMIN</b>
+  <nav>
+    <a href="adminmenu.html">Dashboard</a>
+    <a href="movieshowtime.html">Movies &amp; Showtimes</a>
+    <a href="adminhalls.html" style="text-decoration:underline;">Halls</a>
+    <a href="adminticket.html">Tickets</a>
+  </nav>
+  <div class="adminright">
+    <span id="clock"></span>
+    <a class="btn" href="#" onclick="logout()">Logout</a>
+  </div>
+</header>
+<main>
+
+<div class="halls">
+  <h1>Halls</h1>
+  <p>Click the circle to change a hall's availability.</p>
+  <div id="hallist"></div>
+</div>
+
+</main>
+
+<script>
+adminOnly();
+
+// true = available, false = not available (saved in the browser)
+var halls = getHalls();
+
+function render() {
+  var html = '';
+  for (var i = 0; i < halls.length; i++) {
+    var ok = halls[i];
+    html += '<div class="hallrow">' +
+              '<span class="hallname">HALL ' + (i + 1) + '</span>' +
+              '<div class="statuswrap">' +
+                '<div class="circle ' + (ok ? 'ok' : 'no') + '" onclick="toggleMenu(event, ' + i + ')">' + (ok ? '&#10003;' : '&#10005;') + '</div>' +
+                '<div class="statusmenu" id="menu' + i + '">' +
+                  '<div onclick="setStatus(' + i + ', true)">available</div>' +
+                  '<div onclick="setStatus(' + i + ', false)">not available</div>' +
+                '</div>' +
+              '</div>' +
+            '</div>';
+  }
+  document.getElementById('hallist').innerHTML = html;
+}
+
+function toggleMenu(e, i) {
+  e.stopPropagation();
+  var menu = document.getElementById('menu' + i);
+  var wasOpen = menu.style.display === 'block';
+  closeMenus();
+  if (!wasOpen) {
+    menu.style.display = 'block';
+    menu.parentNode.parentNode.classList.add('open');   // lift this row above the rows below it
+  }
+}
+
+function closeMenus() {
+  var menus = document.getElementsByClassName('statusmenu');
+  for (var i = 0; i < menus.length; i++) {
+    menus[i].style.display = 'none';
+    menus[i].parentNode.parentNode.classList.remove('open');
+  }
+}
+
+function setStatus(i, value) {
+  halls[i] = value;
+  saveHalls(halls);
+  render();
+}
+
+document.onclick = closeMenus;
+render();
+</script>
+</body>
+</html>

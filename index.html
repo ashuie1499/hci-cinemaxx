@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Main Menu</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="database.js"></script>
+  <script src="script.js"></script>
+</head>
+<body>
+<header class="nav">
+  <a href="index.html" class="logo-link"><img src="media/logo.svg" alt="CINEMAXX Logo" class="logo-img"></a>
+  <nav>
+    <a href="index.html">Movies</a>
+    <a href="myhistory.html">My History</a>
+  </nav>
+  <div>
+    <input type="text" id="searchbox" placeholder="Search movies" onkeydown="if(event.key==='Enter')doSearch()"> <button onclick="doSearch()">Q</button>
+    <a class="btn" id="authbtn" href="login.html">Login</a>
+  </div>
+</header>
+<main>
+<div id="featured"></div>
+<p class="searchinfo" id="searchinfo"></p>
+
+<p class="tabs">
+  <button id="btn-now" class="tab-active" onclick="show('now')">Now Showing</button>
+  <button id="btn-top" onclick="show('top')">Top Movies</button>
+  <button id="btn-soon" onclick="show('soon')">Coming Soon</button>
+</p>
+<div id="now" class="grid"></div>
+<div id="top" class="ranklist" style="display:none"></div>
+<div id="soon" class="grid" style="display:none"></div>
+
+<script>
+function show(id) {
+  ['now', 'top', 'soon'].forEach(function (x) {
+    document.getElementById(x).style.display = (x === id) ? 'flex' : 'none';
+    document.getElementById('btn-' + x).className = (x === id) ? 'tab-active' : '';
+  });
+}
+
+function card(m) {
+  return '<a class="card" href="movieinfo.html?id=' + m.id + '">' +
+           '<div class="cardimg">' + posterTag(m) + '</div>' +
+           '<div class="cardtitle">' + esc(m.title) + '</div>' +
+         '</a>';
+}
+
+var q = (qs('search') || '').trim().toLowerCase();
+var movies = getMovies();
+
+function matches(m) {
+  return q === '' || m.title.toLowerCase().indexOf(q) >= 0 || (m.genre || '').toLowerCase().indexOf(q) >= 0;
+}
+
+var allNow = movies.filter(function (m) { return m.status === 'now'; });
+var nowList = allNow.filter(matches);
+var soonList = movies.filter(function (m) { return m.status === 'soon' && matches(m); });
+
+document.getElementById('now').innerHTML =
+  nowList.length ? nowList.map(card).join('') : '<p class="empty">' + (q ? 'No movies match your search.' : 'No movies showing yet.') + '</p>';
+document.getElementById('soon').innerHTML =
+  soonList.length ? soonList.map(card).join('') : '<p class="empty">' + (q ? 'No upcoming movies match your search.' : 'No upcoming movies yet.') + '</p>';
+
+// top movies = ranked by real tickets sold
+var rankedAll = allNow.map(function (m) { return { m: m, sold: ticketsSoldForMovie(m.id) }; })
+  .sort(function (a, b) { return (b.sold - a.sold) || a.m.title.localeCompare(b.m.title); });
+var ranked = rankedAll.filter(function (r) { return matches(r.m); }).slice(0, 10);
+
+document.getElementById('top').innerHTML = ranked.length ? ranked.map(function (r, i) {
+  return '<a class="rankitem" href="movieinfo.html?id=' + r.m.id + '">' +
+           '<span class="ranknum">' + (i + 1) + '</span>' +
+           '<span class="rankposter">' + posterTag(r.m) + '</span>' +
+           '<span class="rankinfo"><b>' + esc(r.m.title) + '</b><br>' + r.sold + ' tickets sold</span>' +
+         '</a>';
+}).join('') : '<p class="empty">No movies match your search.</p>';
+
+// featured banner: best seller, or the newest movie if nothing has sold yet
+if (q === '' && allNow.length) {
+  var f = rankedAll[0].sold > 0 ? rankedAll[0].m : allNow[allNow.length - 1];
+  var syn = f.synopsis ? (f.synopsis.length > 220 ? f.synopsis.slice(0, 220) + '...' : f.synopsis) : '';
+  var meta = [f.rating ? 'Rated ' + f.rating : '', f.genre, f.runtime ? f.runtime + ' min' : ''].filter(Boolean).join('  |  ');
+  document.getElementById('featured').innerHTML =
+    '<div class="featured">' +
+      '<div class="featposter">' + posterTag(f) + '</div>' +
+      '<div class="featinfo">' +
+        '<small>FEATURED</small>' +
+        '<h1>' + esc(f.title) + '</h1>' +
+        (meta ? '<p class="featmeta">' + esc(meta) + '</p>' : '') +
+        (syn ? '<p class="featsyn">' + esc(syn) + '</p>' : '') +
+        '<a class="btn" href="moviebooking.html?id=' + f.id + '">BOOK NOW</a>' +
+        '<a class="btn" href="movieinfo.html?id=' + f.id + '">MORE INFO</a>' +
+      '</div>' +
+    '</div>';
+}
+
+// search message, and jump to the tab that has results
+if (q !== '') {
+  document.getElementById('searchinfo').innerHTML =
+    'Results for "' + esc(qs('search')) + '" &middot; <a href="index.html">Clear search</a>';
+  if (!nowList.length && soonList.length) show('soon');
+}
+</script>
+</main>
+</body>
+</html>

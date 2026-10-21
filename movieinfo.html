@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Movie Info</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="database.js"></script>
+  <script src="script.js"></script>
+</head>
+<body>
+<header class="nav">
+  <a href="index.html" class="logo-link"><img src="media/logo.svg" alt="CINEMAXX Logo" class="logo-img"></a>
+  <nav>
+    <a href="index.html">Movies</a>
+    <a href="myhistory.html">My History</a>
+  </nav>
+  <div>
+    <input type="text" id="searchbox" placeholder="Search movies" onkeydown="if(event.key==='Enter')doSearch()"> <button onclick="doSearch()">Q</button>
+    <a class="btn" id="authbtn" href="login.html">Login</a>
+  </div>
+</header>
+<main>
+<div class="info" id="info"></div>
+<div id="bookarea"></div>
+
+<script>
+var m = findMovie(qs('id'));
+var info = document.getElementById('info');
+
+if (!m) {
+  info.innerHTML = '<p class="empty">Movie not found.</p><p style="text-align:center"><a class="btn" href="index.html">BACK TO MOVIES</a></p>';
+} else {
+  var dash = function (v) { return v ? esc(v) : '-'; };
+  var link = (m.trailer && /^https?:/i.test(m.trailer)) ? '<p class="trailer-link"><a href="' + esc(m.trailer) + '" target="_blank">Open trailer in a new tab</a></p>' : '';
+
+  info.innerHTML =
+    '<div class="info-top">' +
+      '<div class="poster">' + posterTag(m) + '</div>' +
+      '<div class="trailer-wrap">' + trailerHtml(m.trailer) + link + '</div>' +
+    '</div>' +
+    '<div class="info-title">' +
+      (m.rating ? '<span class="rating">' + esc(m.rating) + '</span>' : '') +
+      '<h1>' + esc(m.title) + '</h1>' +
+    '</div>' +
+    '<div class="info-bottom">' +
+      '<div class="info-details">' +
+        '<p><span>Release Date</span>: ' + (m.releaseDate ? fmtDate(m.releaseDate) : '-') + '</p>' +
+        '<p><span>Running Time</span>: ' + (m.runtime ? m.runtime + ' min' : '-') + '</p>' +
+        '<p><span>Genre</span>: ' + dash(m.genre) + '</p>' +
+        '<p><span>Language</span>: ' + dash(m.language) + '</p>' +
+        '<p><span>Subtitles</span>: ' + dash(m.subtitles) + '</p>' +
+        '<p><span>Classification</span>: ' + dash(m.classification) + '</p>' +
+      '</div>' +
+      '<div class="info-about">' +
+        '<h2>About Movie</h2>' +
+        '<h3>Synopsis</h3><p>' + dash(m.synopsis) + '</p>' +
+        '<h3>Director</h3><p>' + dash(m.director) + '</p>' +
+        '<h3>Cast</h3><p>' + dash(m.cast) + '</p>' +
+      '</div>' +
+    '</div>';
+
+  document.getElementById('bookarea').innerHTML = (m.status === 'now')
+    ? '<a class="booknow" href="moviebooking.html?id=' + m.id + '">BOOK NOW</a>'
+    : '<span class="booknow soonlabel">COMING SOON</span>';
+}
+</script>
+</main>
+</body>
+</html>

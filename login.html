@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Login</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="database.js"></script>
+  <script src="script.js"></script>
+</head>
+<body class="center-page">
+<header class="nav">
+  <a href="index.html" class="logo-link"><img src="media/logo.svg" alt="CINEMAXX Logo" class="logo-img"></a>
+  <nav>
+    <a href="index.html">Movies</a>
+    <a href="myhistory.html">My History</a>
+  </nav>
+  <div>
+    <input type="text" id="searchbox" placeholder="Search movies" onkeydown="if(event.key==='Enter')doSearch()"> <button onclick="doSearch()">Q</button>
+    <a class="btn" id="authbtn" href="login.html">Login</a>
+  </div>
+</header>
+<main>
+<div class="loginbox">
+  <h1>login</h1>
+  <div class="field"><input type="text" id="username" placeholder="Username"></div>
+  <div class="field"><input type="password" id="password" placeholder="Password"></div>
+  <div class="options">
+    <label><input type="checkbox"> Remember me</label>
+    <a href="#">Forgot Password?</a>
+  </div>
+  <button class="loginbtn" onclick="login()">Login</button>
+  <p class="register">Don't have an account? <a href="register.html">Register</a></p>
+  <p class="msg" id="msg"></p>
+</div>
+<script>
+if (qs('registered')) {
+  var m = document.getElementById('msg');
+  m.innerText = 'Account created. Please log in.';
+  m.style.color = '#9be7a8';
+}
+document.onkeydown = function (e) { if (e.key === 'Enter') login(); };
+</script>
+</main>
+</body>
+</html>

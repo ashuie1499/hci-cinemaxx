@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Register</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="database.js"></script>
+  <script src="script.js"></script>
+</head>
+<body class="center-page">
+<header class="nav">
+  <a href="index.html" class="logo-link"><img src="media/logo.svg" alt="CINEMAXX Logo" class="logo-img"></a>
+  <nav>
+    <a href="index.html">Movies</a>
+    <a href="myhistory.html">My History</a>
+  </nav>
+  <div>
+    <input type="text" id="searchbox" placeholder="Search movies" onkeydown="if(event.key==='Enter')doSearch()"> <button onclick="doSearch()">Q</button>
+    <a class="btn" id="authbtn" href="login.html">Login</a>
+  </div>
+</header>
+<main>
+<div class="loginbox">
+  <h1>register</h1>
+  <div class="field"><input type="text" id="username" placeholder="Username"></div>
+  <div class="field"><input type="password" id="password" placeholder="Password (min 6 characters)"></div>
+  <div class="field"><input type="password" id="confirm" placeholder="Confirm Password"></div>
+  <button class="loginbtn" onclick="register()">Create Account</button>
+  <p class="register">Already have an account? <a href="login.html">Login</a></p>
+  <p class="msg" id="msg"></p>
+</div>
+<script>
+document.onkeydown = function (e) { if (e.key === 'Enter') register(); };
+</script>
+</main>
+</body>
+</html>

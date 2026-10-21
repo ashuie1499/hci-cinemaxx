@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Movie Booking</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="database.js"></script>
+  <script src="script.js"></script>
+</head>
+<body>
+<header class="nav">
+  <a href="index.html" class="logo-link"><img src="media/logo.svg" alt="CINEMAXX Logo" class="logo-img"></a>
+  <nav>
+    <a href="index.html">Movies</a>
+    <a href="myhistory.html">My History</a>
+  </nav>
+  <div>
+    <input type="text" id="searchbox" placeholder="Search movies" onkeydown="if(event.key==='Enter')doSearch()"> <button onclick="doSearch()">Q</button>
+    <a class="btn" id="authbtn" href="login.html">Login</a>
+  </div>
+</header>
+<main>
+<div class="booking" id="bookingbox"></div>
+<button class="confirmbtn" id="confirmbtn" onclick="confirmBooking()">CONFIRM BOOKING</button>
+
+<script>
+var movie = findMovie(qs('id'));
+var box = document.getElementById('bookingbox');
+var hallOk = getHalls();
+var shows = [];
+var selDate = null, selExp = null, selShow = null;
+
+function uniq(arr) {
+  return arr.filter(function (v, i) { return arr.indexOf(v) === i; });
+}
+
+if (!movie) {
+  box.innerHTML = '<p class="empty">Movie not found.</p><p style="text-align:center"><a class="btn" href="index.html">BACK TO MOVIES</a></p>';
+  document.getElementById('confirmbtn').style.display = 'none';
+} else {
+  var now = new Date();
+  shows = getShowtimes().filter(function (s) {
+    return s.movieId === movie.id && showtimeStart(s) > now && hallOk[s.hall - 1];
+  }).sort(function (a, b) { return showtimeStart(a) - showtimeStart(b); });
+  render();
+}
+
+function wrap(inner) {
+  return '<div class="bookgrid"><div class="sideinfo">' + movieSide(movie) + '</div><div class="sidemain">' + inner + '</div></div>';
+}
+
+function render() {
+  var head = '';
+  var dates = uniq(shows.map(function (s) { return s.date; }));
+
+  if (!dates.length) {
+    box.innerHTML = wrap('<p class="empty">No showtimes available yet.</p>');
+    document.getElementById('confirmbtn').style.display = 'none';
+    return;
+  }
+
+  if (!selDate || dates.indexOf(selDate) < 0) selDate = dates[0];
+  var exps = uniq(shows.filter(function (s) { return s.date === selDate; }).map(function (s) { return s.exp; }));
+  if (!selExp || exps.indexOf(selExp) < 0) selExp = exps[0];
+  var list = shows.filter(function (s) { return s.date === selDate && s.exp === selExp; });
+
+  var dateHtml = dates.map(function (dt) {
+    var p = dt.split('-');
+    var d = new Date(+p[0], +p[1] - 1, +p[2]);
+    return '<div class="datebtn' + (dt === selDate ? ' active' : '') + '" onclick="pickDate(\'' + dt + '\')">' +
+             '<small>' + DAY_NAMES[d.getDay()].toUpperCase() + '</small><b>' + pad(d.getDate()) + '</b><small>' + MONTH_NAMES[d.getMonth()] + '</small></div>';
+  }).join('');
+
+  var expHtml = exps.map(function (e) {
+    return '<div class="expbtn' + (e === selExp ? ' active' : '') + '" onclick="pickExp(\'' + e + '\')">' + esc(e) + '</div>';
+  }).join('');
+
+  var hallHtml = '';
+  for (var h = 1; h <= HALL_COUNT; h++) {
+    var inHall = list.filter(function (s) { return s.hall === h; });
+    if (!inHall.length) continue;
+    hallHtml += '<div class="hall"><h3>Hall ' + h + '</h3><div class="slots">' +
+      inHall.map(function (s) {
+        var left = CAPACITY - takenSeats(s.id).length;
+        return '<div class="slot' + (selShow === s.id ? ' active' : '') + (left <= 0 ? ' soldout' : '') + '"' +
+               (left > 0 ? ' onclick="pickShow(\'' + s.id + '\')"' : '') + '>' +
+               '<span>' + fmtTime(s.time) + '</span><hr><span>' + fmtMoney(s.price) + '</span>' +
+               '<small>' + (left > 0 ? left + ' seats left' : 'Sold out') + '</small></div>';
+      }).join('') + '</div></div>';
+  }
+
+  box.innerHTML = wrap(
+    '<h3>Select Date</h3><div class="options-row">' + dateHtml + '</div>' +
+    '<h3>Select Experiences</h3><div class="options-row">' + expHtml + '</div>' +
+    '<h3>Select Hall &amp; Time</h3>' + hallHtml);
+}
+
+function pickDate(d) { selDate = d; selShow = null; render(); }
+function pickExp(e) { selExp = e; selShow = null; render(); }
+function pickShow(id) { selShow = id; render(); }
+
+// FIXED: Removed the login prompt entirely, allowing guests to proceed straight to seat booking layout
+function confirmBooking() {
+  if (!selShow) { 
+    showAlert('Select Showtime','Please select a hall and time first.'); 
+    return; 
+  }
+  
+  save('booking', { showtimeId: selShow, seats: [] });
+  window.location.href = 'seatbooking.html';
+}
+</script>
+</main>
+</body>
+</html>

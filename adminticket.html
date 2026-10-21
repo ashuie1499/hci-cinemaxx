@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>All Tickets</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="database.js"></script>
+  <script src="script.js"></script>
+</head>
+<body onload="adminOnly()">
+<header class="nav">
+  <b>CINEMAXX ADMIN</b>
+  <nav>
+    <a href="adminmenu.html">Dashboard</a>
+    <a href="movieshowtime.html">Movies & Showtimes</a>
+    <a href="adminhalls.html">Halls</a>
+    <a href="adminticket.html">Tickets</a>
+  </nav>
+  <div class="adminright">
+    <span id="clock"></span>
+    <a class="btn" href="#" onclick="logout()">Logout</a>
+  </div>
+</header>
+<main>
+  <h2>All Tickets</h2>
+  <div class="search-bar">
+    <input type="text" id="searchbox" placeholder="Search customer, movie or order no." onkeyup="render()">
+  </div>
+  <p id="summary" class="summary-line"></p>
+  <div id="ticket-table" class="admin-table-container"></div>
+</main>
+
+<script>
+function render() {
+  var allTickets = getTickets().sort((a, b) => new Date(b.created) - new Date(a.created));
+  var query = document.getElementById('searchbox').value.toLowerCase();
+  
+  var filtered = allTickets.filter(function(t) {
+    if (!query) return true;
+    var movie = findMovie(t.movieId);
+    return t.user.toLowerCase().includes(query) ||
+           t.id.toLowerCase().includes(query) ||
+           (movie && movie.title.toLowerCase().includes(query));
+  });
+
+  var summary = document.getElementById('summary');
+  var totalRevenue = filtered.reduce((sum, t) => sum + (t.totalPaid || t.total || 0), 0);
+  var totalSeats = filtered.reduce((sum, t) => sum + t.seats.length, 0);
+  summary.innerText = filtered.length + ' orders | ' + totalSeats + ' tickets | ' + fmtMoney(totalRevenue);
+
+  var table = document.getElementById('ticket-table');
+  if (filtered.length === 0) {
+    table.innerHTML = '<p class="empty">No tickets found.</p>';
+    return;
+  }
+
+  var html = '<table><thead><tr>' +
+    '<th>Order ID</th>' +
+    '<th>Customer</th>' +
+    '<th>Movie</th>' +
+    '<th>Date & Time</th>' +
+    '<th>Seats</th>' +
+    '<th>Total Paid</th>' +
+    '</tr></thead><tbody>';
+
+  filtered.forEach(function(t) {
+    // Bulletproof lookup: Use fallback "N/A" if movie or showtime is not found
+    var movie = findMovie(t.movieId);
+    var showtime = findShowtime(t.showtimeId);
+    
+    var movieTitle = movie ? esc(movie.title) : '<i>N/A</i>';
+    var showtimeStr = showtime ? fmtDate(showtime.date) + ', ' + fmtTime(showtime.time) : '<i>N/A</i>';
+
+    html += '<tr>' +
+      '<td>' + esc(t.id) + '</td>' +
+      '<td>' + esc(t.user || t.username) + '</td>' +
+      '<td>' + movieTitle + '</td>' +
+      '<td>' + showtimeStr + '</td>' +
+      '<td>' + t.seats.join(', ') + ' (' + t.seats.length + ')</td>' +
+      '<td>' + fmtMoney(t.totalPaid || t.total || 0) + '</td>' +
+      '</tr>';
+  });
+
+  html += '</tbody></table>';
+  table.innerHTML = html;
+}
+
+window.addEventListener('load', render);
+</script>
+</body>
+</html>

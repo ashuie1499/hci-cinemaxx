@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>My History</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="database.js"></script>
+  <script src="script.js"></script>
+</head>
+<body>
+<header class="nav">
+  <a href="index.html" class="logo-link"><img src="media/logo.svg" alt="CINEMAXX Logo" class="logo-img"></a>
+  <nav>
+    <a href="index.html">Movies</a>
+    <a href="myhistory.html">My History</a>
+  </nav>
+  <div>
+    <input type="text" id="searchbox" placeholder="Search movies" onkeydown="if(event.key==='Enter')doSearch()"> <button onclick="doSearch()">Q</button>
+    <a class="btn" id="authbtn" href="login.html">Login</a>
+  </div>
+</header>
+<main>
+<h1 style="text-align:center;">MY HISTORY</h1>
+<div class="histlist" id="histlist"></div>
+
+<script>
+userOnly();
+
+var me = localStorage.getItem('user');
+var mine = getTickets().filter(function (t) { return t.user === me; })
+  .sort(function (a, b) { return new Date(b.purchasedAt) - new Date(a.purchasedAt); });
+
+document.getElementById('histlist').innerHTML = mine.length ? mine.map(function (t) {
+  return '<div class="histitem">' +
+           '<div>' +
+             '<h3>' + esc(t.movieTitle) + '</h3>' +
+             '<p>' + fmtDate(t.date) + ' &middot; ' + fmtTime(t.time) + ' &middot; Hall ' + t.hall + ' &middot; ' + esc(t.exp) + '</p>' +
+             '<p>Seats: ' + t.seats.join(', ') + ' &middot; Total: ' + fmtMoney(t.total) + '</p>' +
+             '<p>Order No.: ' + esc(t.id) + '</p>' +
+           '</div>' +
+           '<a class="btn" href="ticket.html?id=' + t.id + '">VIEW TICKET</a>' +
+         '</div>';
+}).join('') : '<p class="empty">You have no bookings yet.</p><p style="text-align:center"><a class="btn" href="index.html">BROWSE MOVIES</a></p>';
+</script>
+</main>
+</body>
+</html>
